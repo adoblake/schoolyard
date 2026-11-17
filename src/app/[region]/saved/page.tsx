@@ -1,49 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ListingList, ListingListSkeleton } from "@/components/listing-list";
-import { SignInPrompt } from "@/components/sign-in-prompt";
-import { SiteHeader } from "@/components/site-header";
-import { getRegion } from "@/lib/data";
+import { Footer, SignInNotice, TopBar } from "@/components/cl";
+import { ResultList } from "@/components/results";
 import { getSavedListings, getViewerId } from "@/lib/queries";
 
-export const metadata: Metadata = { title: "Saved · SchoolYard" };
+export const metadata: Metadata = { title: "favorites · SchoolYard" };
 
-export default async function SavedPage({ params }: PageProps<"/[region]/saved">) {
-  const { region: slug } = await params;
-  const region = getRegion(slug)!;
+export default async function FavoritesPage({ params }: PageProps<"/[region]/saved">) {
+  const { region } = await params;
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <SiteHeader region={region} />
-      <main className="mx-auto max-w-md px-4 py-4 pb-24">
-        <h1 className="mb-3 text-sm font-bold uppercase tracking-wide text-zinc-500">saved listings</h1>
-        <Suspense fallback={<ListingListSkeleton />}>
-          <SavedList regionSlug={slug} />
+    <div>
+      <TopBar regionSlug={region} crumbs={[{ label: region, href: `/${region}` }, { label: "favorites" }]} />
+      <main className="mx-auto max-w-6xl px-3 pt-3">
+        <h1 className="bar mb-3">favorites</h1>
+        <Suspense fallback={<p className="text-zinc-500">loading…</p>}>
+          <Favorites regionSlug={region} />
         </Suspense>
       </main>
+      <Footer />
     </div>
   );
 }
 
-async function SavedList({ regionSlug }: { regionSlug: string }) {
+async function Favorites({ regionSlug }: { regionSlug: string }) {
   const userId = await getViewerId();
   if (!userId) {
-    return <SignInPrompt next={`/${regionSlug}/saved`}>Sign in to save listings and find them here later.</SignInPrompt>;
+    return <SignInNotice next={`/${regionSlug}/saved`}>Log in to keep favorites and find them here later.</SignInNotice>;
   }
   const listings = await getSavedListings(userId);
-  return (
-    <ListingList
-      listings={listings}
-      empty={
-        <>
-          Nothing saved yet. Tap <span className="font-medium">save</span> on a listing to keep it here.
-          <div className="mt-4">
-            <Link href={`/${regionSlug}`} className="font-medium text-zinc-900 underline">
-              Browse listings
-            </Link>
-          </div>
-        </>
-      }
-    />
-  );
+  if (listings.length === 0) {
+    return (
+      <p>
+        No favorites yet. Click the ☆ next to any posting to save it here.{" "}
+        <Link href={`/${regionSlug}`}>Browse {regionSlug}</Link>
+      </p>
+    );
+  }
+  return <ResultList listings={listings} showStatus />;
 }

@@ -25,7 +25,7 @@ export default function TermsPage() {
         inspect items before paying, and use your judgment.
       </p>
 
-      <h2>What you can&apos;t post</h2>
+      <h2 id="prohibited" className="scroll-mt-4">What you can&apos;t post</h2>
       <ul>
         <li>Weapons, ammunition, explosives or fireworks</li>
         <li>Drugs, drug paraphernalia, alcohol, tobacco or vaping products, or prescription medication</li>
@@ -35,6 +35,7 @@ export default function TermsPage() {
         <li>Animals, adult content, or anything illegal where you are or banned by your school</li>
         <li>Misleading listings, spam, or posts that harass or discriminate against anyone</li>
       </ul>
+      <p>Use <strong>flag</strong> on any posting that breaks these rules. Flagged postings are reviewed and removed if needed.</p>
       <p>Tutoring and study help are welcome as long as the work submitted for grades stays the student&apos;s own.</p>
 
       <h2>Your content</h2>

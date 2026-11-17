@@ -2,12 +2,27 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { getSchoolName } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
 
 type Profile = { id: string; email: string | null; displayName: string; schoolId: string | null; verifiedDomain: string | null };
+
+export function LogOutButton() {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      className="text-link"
+      onClick={async () => {
+        await createClient().auth.signOut();
+        router.push("/");
+        router.refresh();
+      }}
+    >
+      log out
+    </button>
+  );
+}
 
 export function AccountForm({ profile, schoolIds, next }: { profile: Profile; schoolIds: string[]; next: string | null }) {
   const router = useRouter();
@@ -38,72 +53,29 @@ export function AccountForm({ profile, schoolIds, next }: { profile: Profile; sc
     });
   }
 
-  async function signOut() {
-    await createClient().auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
-
   return (
-    <form onSubmit={save} className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4">
-      <div className="text-sm">
-        <div className="font-medium">{profile.email}</div>
-        {profile.verifiedDomain && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
-            <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> verified {profile.verifiedDomain} student
-          </div>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="account-name" className="mb-1 block text-sm font-medium">
-          name buyers will see
-        </label>
-        <input
-          id="account-name"
-          value={name}
-          maxLength={40}
-          autoComplete="name"
-          onChange={(e) => setName(e.target.value)}
-          placeholder="ex: Maya R."
-          className="w-full rounded-xl border border-zinc-200 p-3 text-sm"
-        />
-        <p className="mt-1 text-xs text-zinc-500">First name and last initial is plenty.</p>
-      </div>
-
-      <div>
-        <label htmlFor="account-school" className="mb-1 block text-sm font-medium">
-          your campus
-        </label>
-        <select
-          id="account-school"
-          value={schoolId}
-          onChange={(e) => setSchoolId(e.target.value)}
-          className="w-full rounded-xl border border-zinc-200 bg-white p-3 text-sm"
-        >
-          {!schoolId && <option value="">Choose…</option>}
-          {schoolIds.map((id) => (
-            <option key={id} value={id}>
-              {getSchoolName(id)}
-            </option>
-          ))}
-        </select>
-      </div>
-
+    <form onSubmit={save} className="grid max-w-xl gap-2 sm:grid-cols-[160px_1fr] sm:items-center">
+      <label htmlFor="account-name">name buyers will see</label>
+      <input id="account-name" value={name} maxLength={40} autoComplete="name" onChange={(e) => setName(e.target.value)} placeholder="Maya R." />
+      <label htmlFor="account-school">your campus</label>
+      <select id="account-school" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
+        {!schoolId && <option value="">choose…</option>}
+        {schoolIds.map((id) => (
+          <option key={id} value={id}>
+            {getSchoolName(id)}
+          </option>
+        ))}
+      </select>
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-red-700 sm:col-start-2" role="alert">
           {error}
         </p>
       )}
-      {saved && !next && <p className="text-sm text-emerald-700">Saved.</p>}
-
-      <div className="flex gap-2">
-        <Button type="submit" className="h-11 flex-1 rounded-2xl" disabled={pending}>
-          {pending ? "Saving…" : next ? "Save and continue" : "Save"}
-        </Button>
-        <Button type="button" variant="outline" className="h-11 rounded-2xl" onClick={signOut}>
-          Sign out
-        </Button>
+      {saved && !next && <p className="text-green-800 sm:col-start-2">saved</p>}
+      <div className="sm:col-start-2">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "saving…" : next ? "save and continue" : "save"}
+        </button>
       </div>
     </form>
   );

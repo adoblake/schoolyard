@@ -1,3 +1,4 @@
+import { getSection, priceKind } from "./categories";
 import { CATEGORIES, type Category, type ListingFilters, type Region, type SortOrder } from "./types";
 
 export const SORTS: SortOrder[] = ["newest", "price-asc", "price-desc"];
@@ -24,22 +25,51 @@ function parseDollarsToCents(value: string | null): number | undefined {
 }
 
 /**
- * Reads browse filters from the URL (?school=gcu&cat=books&q=lamp&min=5&max=40&sort=price-asc).
- * Unknown or out-of-region values fall back to "all" rather than erroring.
+ * Reads search filters from the URL, Craigslist style:
+ * ?cat=books&school=gcu&query=lamp&min_price=5&max_price=40&has_pic=1&today=1&sort=priceasc&view=gallery&page=2
+ * Unknown or out-of-region values fall back to defaults rather than erroring.
  */
 export function parseFilters(region: Region, params: ParamSource): ListingFilters {
   const school = params.get("school");
-  const cat = params.get("cat");
+  // The search form sends a whole section as cat=@forsale; links use section=forsale.
+  const catParam = params.get("cat");
+  const cat = catParam?.startsWith("@") ? null : catParam;
+  const section = catParam?.startsWith("@") ? catParam.slice(1) : params.get("section");
   const sort = params.get("sort");
+  const page = Number(params.get("page"));
   return {
     regionSlug: region.slug,
     schoolId: school && region.schools.some((s) => s.id === school) ? school : "all",
     category: cat && (CATEGORIES as readonly string[]).includes(cat) ? (cat as Category) : "all",
-    query: (params.get("q") ?? "").slice(0, 100),
-    minPriceCents: parseDollarsToCents(params.get("min")),
-    maxPriceCents: parseDollarsToCents(params.get("max")),
-    sort: sort && (SORTS as string[]).includes(sort) ? (sort as SortOrder) : "newest",
+    section: section && getSection(section) ? section : "all",
+    query: (params.get("query") ?? "").slice(0, 100),
+    minPriceCents: parseDollarsToCents(params.get("min_price")),
+    maxPriceCents: parseDollarsToCents(params.get("max_price")),
+    hasImage: params.get("has_pic") === "1",
+    postedToday: params.get("today") === "1",
+    sort: sort === "priceasc" ? "price-asc" : sort === "pricedsc" ? "price-desc" : "newest",
+    view: params.get("view") === "gallery" ? "gallery" : "list",
+    page: Number.isInteger(page) && page > 1 ? Math.min(page, 100) : 1,
   };
+}
+
+/** Builds a search URL from filters, leaving out defaults so links stay short. */
+export function searchHref(filters: ListingFilters, patch: Partial<ListingFilters> = {}): string {
+  const f = { ...filters, ...patch };
+  const q = new URLSearchParams();
+  if (f.category !== "all") q.set("cat", f.category);
+  else if (f.section !== "all") q.set("section", f.section);
+  if (f.schoolId !== "all") q.set("school", f.schoolId);
+  if (f.query) q.set("query", f.query);
+  if (f.minPriceCents !== undefined) q.set("min_price", String(f.minPriceCents / 100));
+  if (f.maxPriceCents !== undefined) q.set("max_price", String(f.maxPriceCents / 100));
+  if (f.hasImage) q.set("has_pic", "1");
+  if (f.postedToday) q.set("today", "1");
+  if (f.sort !== "newest") q.set("sort", f.sort === "price-asc" ? "priceasc" : "pricedsc");
+  if (f.view !== "list") q.set("view", f.view);
+  if (f.page > 1) q.set("page", String(f.page));
+  const qs = q.toString();
+  return `/${f.regionSlug}/search${qs ? `?${qs}` : ""}`;
 }
 
 /**
@@ -62,6 +92,14 @@ export function formatPrice(cents: number): string {
   return Number.isInteger(dollars)
     ? `$${dollars.toLocaleString("en-US")}`
     : `$${dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Price as shown on a listing: "$45", "$650/mo", "free", or "" when the category has no price. */
+export function formatListingPrice(cents: number, category: Category): string {
+  const kind = priceKind(category);
+  if (kind === null) return category === "free" ? "free" : "";
+  if (kind === "rent" && cents > 0) return `${formatPrice(cents)}/mo`;
+  return formatPrice(cents);
 }
 
 /**

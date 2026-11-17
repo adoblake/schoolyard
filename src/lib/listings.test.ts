@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatListingPrice,
   formatPrice,
   formatTimeAgo,
   paramSource,
   parseFilters,
   parsePriceToCents,
   safeNextPath,
+  searchHref,
   toPrefixTsQuery,
 } from "./listings";
 import { getRegion } from "./data";
@@ -13,32 +15,68 @@ import { getRegion } from "./data";
 const phoenix = getRegion("phoenix")!;
 
 describe("parseFilters", () => {
-  it("reads valid filters from the URL", () => {
-    const f = parseFilters(phoenix, new URLSearchParams("school=gcu&cat=books&q=lamp&min=5&max=40.5&sort=price-asc"));
+  it("reads Craigslist-style search params", () => {
+    const f = parseFilters(
+      phoenix,
+      new URLSearchParams("school=gcu&cat=books&query=lamp&min_price=5&max_price=40.5&has_pic=1&today=1&sort=priceasc&view=gallery&page=2"),
+    );
     expect(f).toEqual({
       regionSlug: "phoenix",
       schoolId: "gcu",
+      section: "all",
       category: "books",
       query: "lamp",
       minPriceCents: 500,
       maxPriceCents: 4050,
+      hasImage: true,
+      postedToday: true,
       sort: "price-asc",
+      view: "gallery",
+      page: 2,
     });
   });
 
   it("ignores schools from other regions and unknown values", () => {
-    const f = parseFilters(phoenix, new URLSearchParams("school=nau&cat=cars&min=-3&max=abc&sort=random"));
+    const f = parseFilters(phoenix, new URLSearchParams("school=nau&cat=cars&section=nope&min_price=-3&max_price=abc&sort=random&page=0"));
     expect(f.schoolId).toBe("all");
     expect(f.category).toBe("all");
+    expect(f.section).toBe("all");
     expect(f.minPriceCents).toBeUndefined();
     expect(f.maxPriceCents).toBeUndefined();
     expect(f.sort).toBe("newest");
+    expect(f.page).toBe(1);
+  });
+
+  it("accepts a whole section from the form (cat=@housing) or a link (section=housing)", () => {
+    expect(parseFilters(phoenix, new URLSearchParams("cat=@housing")).section).toBe("housing");
+    expect(parseFilters(phoenix, new URLSearchParams("cat=@housing")).category).toBe("all");
+    expect(parseFilters(phoenix, new URLSearchParams("section=housing")).section).toBe("housing");
   });
 
   it("accepts Next's searchParams object shape", () => {
-    const f = parseFilters(phoenix, paramSource({ cat: ["free", "books"], q: undefined }));
+    const f = parseFilters(phoenix, paramSource({ cat: ["free", "books"], query: undefined }));
     expect(f.category).toBe("free");
     expect(f.query).toBe("");
+  });
+});
+
+describe("searchHref", () => {
+  it("round-trips filters and drops defaults", () => {
+    const f = parseFilters(phoenix, new URLSearchParams("cat=dorm/apartment&school=gcu&max_price=40&view=gallery"));
+    expect(searchHref(f)).toBe("/phoenix/search?cat=dorm%2Fapartment&school=gcu&max_price=40&view=gallery");
+    expect(parseFilters(phoenix, new URLSearchParams(searchHref(f).split("?")[1]))).toEqual(f);
+    expect(searchHref(f, { page: 3, view: "list" })).toBe("/phoenix/search?cat=dorm%2Fapartment&school=gcu&max_price=40&page=3");
+    expect(searchHref(parseFilters(phoenix, new URLSearchParams()))).toBe("/phoenix/search");
+  });
+});
+
+describe("formatListingPrice", () => {
+  it("formats by category", () => {
+    expect(formatListingPrice(4500, "books")).toBe("$45");
+    expect(formatListingPrice(65000, "sublets")).toBe("$650/mo");
+    expect(formatListingPrice(0, "free")).toBe("free");
+    expect(formatListingPrice(0, "lost_found")).toBe("");
+    expect(formatListingPrice(2000, "tutoring")).toBe("$20");
   });
 });
 

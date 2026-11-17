@@ -1,14 +1,93 @@
 @import "tailwindcss";
 
+/*
+ * Classifieds look: plain system font, white page, classic blue links with
+ * purple visited links, light gray bars for section headers. The only brand
+ * color is SchoolYard's school-bus yellow in the wordmark.
+ */
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: Arial, Helvetica, "Liberation Sans", sans-serif;
+  --color-link: #0000ee;
+  --color-visited: #551a8b;
+  --color-bar: #eeeeee;
+  --color-rule: #cccccc;
+  --color-brand: #f5b700;
 }
 
-/* The app is light-only for now; dark mode is a later design pass. */
 :root {
   color-scheme: light;
 }
 
-dialog::backdrop {
-  background: rgb(0 0 0 / 0.3);
+@layer base {
+  body {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+  a:visited {
+    color: var(--color-visited);
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  input,
+  select,
+  textarea {
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+    padding: 4px 6px;
+    background: #fff;
+    font-size: 14px;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+/* Gray header bar used for directory sections and boxes. */
+.bar {
+  background: var(--color-bar);
+  border: 1px solid var(--color-rule);
+  padding: 2px 8px;
+  font-weight: 700;
+}
+
+/* Plain gray button, like an old-school form button. */
+.btn {
+  display: inline-block;
+  border: 1px solid #999;
+  border-radius: 3px;
+  background: linear-gradient(#fdfdfd, #e6e6e6);
+  color: #222;
+  padding: 4px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.btn:hover {
+  background: #e6e6e6;
+  text-decoration: none;
+}
+a.btn,
+a.btn:visited {
+  color: #222;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-primary {
+  border-color: #3a6a1a;
+  background: linear-gradient(#5aa526, #3f8a16);
+  color: #fff;
+  font-weight: 700;
+}
+.btn-primary:hover {
+  background: #3f8a16;
+}
+a.btn-primary,
+a.btn-primary:visited {
+  color: #fff;
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { getSection } from "./categories";
 import { toPrefixTsQuery } from "./listings";
 import { createClient, createPublicClient } from "./supabase/server";
 import { photoUrl } from "./supabase/env";
@@ -49,35 +50,43 @@ export function toListing(row: ListingRow): Listing {
   };
 }
 
-export const PAGE_SIZE = 40;
+export const PAGE_SIZE = 60;
 
-/** Active listings for the browse screen (public data, no cookies). */
-export async function searchListings(filters: ListingFilters): Promise<{ listings: Listing[]; error: string | null }> {
+export type SearchResult = { listings: Listing[]; total: number; error: string | null };
+
+/** Active listings for the search page (public data, no cookies). */
+export async function searchListings(filters: ListingFilters): Promise<SearchResult> {
   const supabase = await createPublicClient();
+  const select = filters.hasImage ? LISTING_SELECT.replace("listing_photos (", "listing_photos!inner (") : LISTING_SELECT;
   let q = supabase
     .from("listings")
-    .select(LISTING_SELECT)
+    .select(select, { count: "exact" })
     .eq("region_slug", filters.regionSlug)
     .eq("status", "active");
 
   if (filters.schoolId !== "all") q = q.eq("school_id", filters.schoolId);
   if (filters.category !== "all") q = q.eq("category", filters.category);
+  else if (filters.section !== "all") q = q.in("category", getSection(filters.section)?.categories ?? []);
   if (filters.minPriceCents !== undefined) q = q.gte("price_cents", filters.minPriceCents);
   if (filters.maxPriceCents !== undefined) q = q.lte("price_cents", filters.maxPriceCents);
+  if (filters.postedToday) q = q.gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString());
 
   const tsquery = toPrefixTsQuery(filters.query);
   if (tsquery) q = q.textSearch("search", tsquery, { config: "english" });
 
   if (filters.sort === "price-asc") q = q.order("price_cents", { ascending: true });
   else if (filters.sort === "price-desc") q = q.order("price_cents", { ascending: false });
-  q = q.order("created_at", { ascending: false }).limit(PAGE_SIZE);
+  const from = (filters.page - 1) * PAGE_SIZE;
+  q = q.order("created_at", { ascending: false }).range(from, from + PAGE_SIZE - 1);
 
-  const { data, error } = await q;
+  const { data, error, count } = await q;
   if (error) {
+    // Asking for a page past the end isn't a real error.
+    if (error.code === "PGRST103") return { listings: [], total: count ?? 0, error: null };
     console.error("searchListings failed", error);
-    return { listings: [], error: "Couldn't load listings. Try again in a moment." };
+    return { listings: [], total: 0, error: "Couldn't load listings. Try again in a moment." };
   }
-  return { listings: (data as unknown as ListingRow[]).map(toListing), error: null };
+  return { listings: (data as unknown as ListingRow[]).map(toListing), total: count ?? 0, error: null };
 }
 
 /**

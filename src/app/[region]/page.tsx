@@ -1,100 +1,135 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { BrowseControls } from "@/components/browse-view";
-import { ListingList, ListingListSkeleton, PostFirstLink } from "@/components/listing-list";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { getRegion } from "@/lib/data";
-import { paramSource, parseFilters } from "@/lib/listings";
-import { searchListings } from "@/lib/queries";
+import Link from "next/link";
+import { Footer, Wordmark } from "@/components/cl";
+import { CATEGORY_LABELS, SECTIONS } from "@/lib/categories";
+import { REGIONS, getRegion } from "@/lib/data";
 
 export async function generateMetadata({ params }: PageProps<"/[region]">): Promise<Metadata> {
   const { region } = await params;
   const r = getRegion(region);
-  return r ? { title: `${r.name} · student classifieds`, description: r.subtitle } : {};
+  return r ? { title: `${r.label}: ${r.subtitle}`, description: r.subtitle } : {};
 }
 
-export default async function BrowsePage({ params, searchParams }: PageProps<"/[region]">) {
+/** City home: Craigslist-style directory of sections and categories. */
+export default async function RegionHome({ params }: PageProps<"/[region]">) {
   const { region: slug } = await params;
   const region = getRegion(slug)!;
+  const search = `/${slug}/search`;
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <SiteHeader region={region} />
-      <main className="mx-auto max-w-md pb-24">
-        {/* Controls read the URL in the browser; the fallback keeps the layout steady. */}
-        <Suspense fallback={<div className="h-[420px] bg-white" />}>
-          <BrowseControls regionSlug={slug} />
-        </Suspense>
-        <section className="px-4 py-3">
-          <Suspense
-            fallback={
-              <>
-                <ResultsHeading />
-                <ListingListSkeleton />
-              </>
-            }
-          >
-            <Results regionSlug={slug} searchParams={searchParams} />
-          </Suspense>
-        </section>
-      </main>
-      <SiteFooter />
+    <div className="px-3">
+      <div className="mx-auto grid max-w-6xl gap-x-6 gap-y-5 pt-4 md:grid-cols-[180px_1fr_170px] md:grid-rows-[auto_1fr]">
+        {/* Left column, top: logo, post, account, search. (On phones this comes first, then the directory.) */}
+        <aside className="space-y-3 text-[13px] md:col-start-1 md:row-start-1">
+          <Wordmark href="/" size="lg" />
+          <div className="space-y-1">
+            <Link href={`/${slug}/post`} className="block text-[15px] font-bold">
+              create a posting
+            </Link>
+            <Link href={`/account?region=${slug}`} className="block">
+              my account
+            </Link>
+            <Link href={`/${slug}/saved`} className="block">
+              favorites
+            </Link>
+          </div>
+          <form action={search} role="search">
+            <label htmlFor="home-search" className="sr-only">
+              search {region.label}
+            </label>
+            <input id="home-search" name="query" type="search" placeholder={`search ${region.slug}`} className="w-full" />
+          </form>
+        </aside>
+
+        {/* Center: the directory */}
+        <main className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1">
+          <h1 className="mb-3 text-center text-[17px]">
+            <span className="font-bold">{region.label}</span>{" "}
+            <span className="text-zinc-500">· {region.subtitle}</span>
+          </h1>
+          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+            {SECTIONS.map((section) => (
+              <section key={section.id} className={section.id === "forsale" ? "sm:row-span-3" : ""}>
+                <h2 className="bar text-center">
+                  <Link href={`${search}?section=${section.id}`}>{section.label}</Link>
+                </h2>
+                <ul
+                  className={`mt-1.5 grid gap-x-4 gap-y-0.5 text-[14px] ${
+                    section.categories.length > 4 ? "grid-cols-2" : "grid-cols-1"
+                  }`}
+                >
+                  {section.categories.map((cat) => (
+                    <li key={cat}>
+                      <Link href={`${search}?cat=${encodeURIComponent(cat)}`}>{CATEGORY_LABELS[cat]}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </main>
+
+        {/* Left column, bottom: campuses and help links */}
+        <aside className="space-y-3 text-[13px] md:col-start-1 md:row-start-2">
+          <div>
+            <h2 className="bar text-[12px]">campuses</h2>
+            <ul className="mt-1 space-y-0.5">
+              {region.schools.map((s) => (
+                <li key={s.id}>
+                  <Link href={`${search}?school=${s.id}`}>{s.name}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="space-y-0.5">
+            <Link href="/about" className="block">
+              about SchoolYard
+            </Link>
+            <Link href="/about#safety" className="block">
+              safety tips
+            </Link>
+            <Link href="/terms#prohibited" className="block">
+              prohibited items
+            </Link>
+            <Link href="/terms" className="block">
+              terms of use
+            </Link>
+            <Link href="/privacy" className="block">
+              privacy policy
+            </Link>
+            <Link href="/schools" className="block">
+              for schools
+            </Link>
+          </div>
+        </aside>
+
+        {/* Right column: other cities */}
+        <aside className="space-y-3 text-[13px] md:col-start-3 md:row-span-2 md:row-start-1">
+          <div>
+            <h2 className="bar text-[12px]">SchoolYard sites</h2>
+            <ul className="mt-1 space-y-0.5">
+              {REGIONS.map((r) =>
+                r.slug === slug ? (
+                  <li key={r.slug} className="font-bold">
+                    {r.slug}
+                  </li>
+                ) : (
+                  <li key={r.slug}>
+                    <Link href={`/${r.slug}`}>{r.slug}</Link>
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+          <div>
+            <h2 className="bar text-[12px]">your campus?</h2>
+            <p className="mt-1 text-zinc-600">
+              Not listed? <Link href="/about#request">Request it</Link>.
+            </p>
+          </div>
+        </aside>
+      </div>
+      <Footer />
     </div>
-  );
-}
-
-function ResultsHeading({ count }: { count?: number }) {
-  return (
-    <div className="mb-2 flex items-center justify-between">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">latest listings</h2>
-      {count !== undefined && (
-        <span className="text-xs text-zinc-400" aria-live="polite">
-          {count} {count === 1 ? "result" : "results"}
-        </span>
-      )}
-    </div>
-  );
-}
-
-async function Results({
-  regionSlug,
-  searchParams,
-}: {
-  regionSlug: string;
-  searchParams: PageProps<"/[region]">["searchParams"];
-}) {
-  const region = getRegion(regionSlug)!;
-  const filters = parseFilters(region, paramSource(await searchParams));
-  const { listings, error } = await searchListings(filters);
-  const filtered =
-    filters.schoolId !== "all" ||
-    filters.category !== "all" ||
-    !!filters.query ||
-    filters.minPriceCents !== undefined ||
-    filters.maxPriceCents !== undefined;
-
-  return (
-    <>
-      <ResultsHeading count={listings.length} />
-      {error ? (
-        <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      ) : (
-        <ListingList
-          listings={listings}
-          empty={
-            filtered ? (
-              "Nothing matches yet. Try another college, category or search."
-            ) : (
-              <>
-                No listings in {region.name} yet. Be the first: <PostFirstLink regionSlug={region.slug} />.
-              </>
-            )
-          }
-        />
-      )}
-    </>
   );
 }

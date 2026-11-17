@@ -19,3 +19,13 @@ export async function deleteListing(id: string) {
   const paths = (photos ?? []).map((p) => p.storage_path);
   if (paths.length) await supabase.storage.from(PHOTO_BUCKET).remove(paths);
 }
+
+/** Flag a listing for review (signed-in users only; stored in reports). */
+export async function flagListing(listingId: string, reason: string) {
+  const supabase = createClient();
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user.id;
+  if (!uid) throw new Error("Sign in to flag postings.");
+  const { error } = await supabase.from("reports").insert({ reporter_id: uid, listing_id: listingId, reason });
+  if (error) throw new Error(error.message);
+}

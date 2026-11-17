@@ -1,8 +1,9 @@
 # SchoolYard
 
-Student classifieds, organized like city classifieds but around the colleges
-nearby: pick a SchoolYard (`phoenix.schoolyard`, `tucson.schoolyard`, …), filter
-by campus and category, and buy, sell or trade with other verified students.
+Student classifieds that look and work like classic city classifieds (plain
+text, blue links, dense category directory), organized around the colleges
+nearby: pick a SchoolYard (`phoenix.schoolyard`, `tucson.schoolyard`, …), browse
+by section, category and campus, and buy, sell or trade with verified students.
 
 ## Status
 
@@ -12,27 +13,31 @@ by campus and category, and buy, sell or trade with other verified students.
 | 1 | Supabase: school-email sign-in, real posting with photos, real browse/search, saved listings | ✅ done |
 | 2 | In-app messaging + notifications | next |
 | Launch prep | Landing page, For Schools page, request-your-campus form, draft Terms & Privacy, share image, sitemap | ✅ done |
+| Classifieds redesign | Craigslist-style look and flow, more categories, list/gallery search with paging, flagging | ✅ done |
 | 3 | Report/block/moderation tools, final legal review, custom domain | |
 
 ### What works now
 
-- **Sign in with a school email** (emailed link, no password). Non-school emails
-  are refused up front and by the database. New users add the name buyers see
-  and pick their campus (an `asu.edu` user picks Tempe or Downtown).
-- **Posting**: category, price, condition, campus, pickup spot, description and up
-  to 6 photos. Photos are resized in the browser (max 1600px) and their
-  EXIF/location data is stripped before upload. Listings expire after 30 days.
-- **Browse** per region, with college, category, full-text search (prefix
-  matching, so "calc" finds "calculator"), price range and sort. Filters live in
-  the URL, so links are shareable.
-- **Listing page** with photo gallery. Sellers can mark sold, put back on sale,
-  or delete (photos are deleted too).
-- **Saved listings** stored per account.
-- **Account page**: edit name/campus, sign out, see your listings.
-- **Reply** still says messaging isn't live (Phase 2) instead of pretending to send.
-- **Public pages**: `/` (students), `/schools` (administrators, with sourced
-  figures), `/terms` and `/privacy` (drafts), plus a request-your-campus form
-  that saves to the `campus_requests` table (read it in the Supabase table editor).
+- **Sites page** (`/`) lists every SchoolYard city; **city home** (`/phoenix`) is a
+  directory: for sale, housing, services and community sections with their
+  categories, plus campuses, search and help links.
+- **Search** (`/phoenix/search`): list or gallery view, sort by newest or price,
+  sidebar filters (category or whole section, campus, price range, has image,
+  posted today), 60 results per page with prev/next. Prefix full-text search,
+  so "calc" finds "calculator". Plain GET form, so it works without JavaScript.
+- **Create a posting** in steps: posting type → category → details → preview →
+  publish. Price means rent/month for housing and rate for services; community
+  posts have no price; condition only shows for items for sale. Up to 6 images,
+  resized and stripped of location data in the browser.
+- **Posting page**: title line with price and campus, images, attributes box,
+  reply, ☆ favorite, ⚑ flag (prohibited, scam, spam, wrong category → `reports`
+  table), and manage controls for the seller (mark sold, re-list, delete).
+- **Log in with a school email** (emailed link, no password). Non-school emails
+  are refused up front and by the database.
+- **Account**: postings table with status, plus settings (name, campus) and log out.
+- **Favorites** stored per account.
+- **About, safety tips, For Schools, request-your-campus form, draft Terms and Privacy.**
+- **Reply** still says messaging isn't live yet instead of pretending to send.
 
 ## Tech
 
@@ -110,19 +115,22 @@ Empty `tester_emails` before launch. The table isn't reachable through the API.
 src/
   proxy.ts                         refreshes the Supabase session cookie
   app/
-    [region]/page.tsx              browse (server-rendered results)
+    [region]/page.tsx              city home: directory of sections and categories
+    [region]/search/page.tsx       search results (list/gallery, filters, paging)
     [region]/listing/[id]/page.tsx listing detail
     [region]/post/page.tsx         new post (verified students only)
-    [region]/saved/page.tsx        saved listings
+    [region]/saved/page.tsx        favorites
     account/page.tsx               profile, sign out, my listings
     login/page.tsx                 school-email sign-in
     auth/confirm/route.ts          where the email link lands
-    page.tsx                       public landing page
+    page.tsx                       sites page (all cities)
+    about/page.tsx                 about, safety tips, request your campus
     schools/page.tsx               pitch for colleges and universities
     terms/, privacy/               draft legal pages
   components/                      screens and shared UI
   lib/
     data.ts                        regions + schools (must match the DB seed)
+    categories.ts                  sections, category labels, price/condition rules
     listings.ts                    URL filters, search query, price/time formatting (+ tests)
     queries.ts                     server-side Supabase reads
     client-store.ts                signed-in user, saved ids, clock (browser)
@@ -144,7 +152,9 @@ Migrations in `supabase/migrations/` match what's applied to the project. Key ru
   change their own listings and upload into their own photo folder.
 - Active, unexpired listings are public; sold/expired ones are visible only to
   their seller.
-- Messaging/blocks/reports tables and rules are in place for Phases 2–3.
+- Flags go to `reports` (review them in the table editor). Deleting a reported
+  listing keeps the report, pointed at the seller with the listing title.
+- Messaging and block tables and rules are in place for the next phases.
 
 After changing the schema, regenerate `src/lib/supabase/database.types.ts`.
 

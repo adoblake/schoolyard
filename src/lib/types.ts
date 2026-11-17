@@ -1,12 +1,20 @@
 export const CATEGORIES = [
   "books",
-  "furniture",
   "electronics",
+  "furniture",
+  "dorm/apartment",
   "supplies",
+  "clothing",
+  "bikes",
+  "tickets",
   "free",
   "wanted",
+  "sublets",
+  "roommates",
+  "tutoring",
   "services",
-  "dorm/apartment",
+  "lost_found",
+  "study_groups",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -58,14 +66,25 @@ export type Listing = {
 
 export type SortOrder = "newest" | "price-asc" | "price-desc";
 
+export type ViewMode = "list" | "gallery";
+
 export type ListingFilters = {
   regionSlug: string;
   /** School id, or "all". */
   schoolId: string;
+  /** Section id (e.g. "forsale"), or "all". Ignored when a category is set. */
+  section: string;
   /** Category, or "all". */
   category: Category | "all";
   query: string;
   minPriceCents?: number;
   maxPriceCents?: number;
+  /** Only listings with at least one photo. */
+  hasImage: boolean;
+  /** Only listings posted in the last 24 hours. */
+  postedToday: boolean;
   sort: SortOrder;
+  view: ViewMode;
+  /** 1-based page number. */
+  page: number;
 };

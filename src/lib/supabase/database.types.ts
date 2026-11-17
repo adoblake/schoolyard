@@ -156,6 +156,7 @@ export type Database = {
           details: string | null;
           id: string;
           listing_id: string | null;
+          listing_title: string | null;
           reason: string;
           reported_user_id: string | null;
           reporter_id: string;
@@ -166,6 +167,7 @@ export type Database = {
           details?: string | null;
           id?: string;
           listing_id?: string | null;
+          listing_title?: string | null;
           reason: string;
           reported_user_id?: string | null;
           reporter_id: string;
@@ -176,6 +178,7 @@ export type Database = {
           details?: string | null;
           id?: string;
           listing_id?: string | null;
+          listing_title?: string | null;
           reason?: string;
           reported_user_id?: string | null;
           reporter_id?: string;
@@ -246,7 +249,23 @@ export type Database = {
       signup_domain: { Args: { email: string }; Returns: string };
     };
     Enums: {
-      listing_category: "books" | "furniture" | "electronics" | "supplies" | "free" | "wanted" | "services" | "dorm/apartment";
+      listing_category:
+        | "books"
+        | "furniture"
+        | "electronics"
+        | "supplies"
+        | "free"
+        | "wanted"
+        | "services"
+        | "dorm/apartment"
+        | "clothing"
+        | "bikes"
+        | "tickets"
+        | "sublets"
+        | "roommates"
+        | "tutoring"
+        | "lost_found"
+        | "study_groups";
       listing_condition: "new" | "like new" | "good" | "fair" | "for parts";
       listing_status: "active" | "sold" | "expired" | "removed";
       report_status: "open" | "actioned" | "dismissed";

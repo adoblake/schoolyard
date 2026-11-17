@@ -1,48 +1,45 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Footer, SignInNotice, TopBar } from "@/components/cl";
 import { PostForm } from "@/components/post-form";
-import { SignInPrompt } from "@/components/sign-in-prompt";
-import { SiteHeader } from "@/components/site-header";
-import { Button } from "@/components/ui/button";
-import { getRegion } from "@/lib/data";
 import { getCurrentProfile, isProfileComplete } from "@/lib/queries";
 
-export const metadata: Metadata = { title: "New post · SchoolYard" };
+export const metadata: Metadata = { title: "create a posting · SchoolYard" };
 
 export default async function PostPage({ params }: PageProps<"/[region]/post">) {
   const { region } = await params;
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
-      <PostGate regionSlug={region} />
-    </Suspense>
+    <div>
+      <TopBar regionSlug={region} crumbs={[{ label: region, href: `/${region}` }, { label: "create posting" }]} />
+      <Suspense fallback={<div className="min-h-[50vh]" />}>
+        <PostGate regionSlug={region} />
+      </Suspense>
+      <Footer />
+    </div>
   );
 }
 
 async function PostGate({ regionSlug }: { regionSlug: string }) {
-  const region = getRegion(regionSlug)!;
   const profile = await getCurrentProfile();
   const next = `/${regionSlug}/post`;
 
   if (!isProfileComplete(profile)) {
     return (
-      <div className="min-h-screen bg-zinc-50 text-zinc-950">
-        <SiteHeader region={region} />
-        <main className="mx-auto max-w-md px-4 py-6">
-          {profile ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-600">
-              <p>Add your name and campus before posting, so buyers know who they&apos;re meeting.</p>
-              <Button asChild className="mt-4 rounded-2xl">
-                <Link href={`/account?next=${encodeURIComponent(next)}`}>Finish your profile</Link>
-              </Button>
-            </div>
-          ) : (
-            <SignInPrompt next={next}>
-              Posting is for verified students. Sign in with your school email to post in {region.name}.
-            </SignInPrompt>
-          )}
-        </main>
-      </div>
+      <main className="mx-auto max-w-3xl px-3 pt-4">
+        {profile ? (
+          <div className="max-w-xl border border-rule bg-bar/40 p-4">
+            <p>Add the name buyers will see and pick your campus before posting.</p>
+            <p className="mt-3">
+              <Link href={`/account?next=${encodeURIComponent(next)}`} className="btn btn-primary">
+                finish your account
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <SignInNotice next={next}>Posting is for verified students. Log in with your school email to create a posting.</SignInNotice>
+        )}
+      </main>
     );
   }
 

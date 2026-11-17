@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CircleCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const ROLES = [
-  { value: "student", label: "Student" },
-  { value: "staff", label: "Faculty or staff" },
-  { value: "parent", label: "Parent" },
-  { value: "other", label: "Other" },
+  { value: "student", label: "student" },
+  { value: "staff", label: "faculty or staff" },
+  { value: "parent", label: "parent" },
+  { value: "other", label: "other" },
 ] as const;
 
 export function CampusRequestForm({ defaultRole = "student" }: { defaultRole?: (typeof ROLES)[number]["value"] }) {
@@ -46,62 +44,42 @@ export function CampusRequestForm({ defaultRole = "student" }: { defaultRole?: (
 
   if (status === "done") {
     return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900" role="status">
-        <CircleCheck className="mb-2 h-6 w-6" aria-hidden />
-        Request received for <span className="font-semibold">{school.trim()}</span>. The more requests a campus gets, the
-        sooner it opens. Share this page with classmates to move yours up the list.
-      </div>
+      <p className="border border-green-700 bg-green-50 p-3 text-green-900" role="status">
+        Request received for <strong>{school.trim()}</strong>. The more requests a campus gets, the sooner it opens, so
+        share this page with classmates.
+      </p>
     );
   }
 
-  const input = "w-full rounded-xl border border-zinc-200 bg-white p-3 text-sm";
   return (
-    <form onSubmit={submit} noValidate className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label htmlFor="req-school" className="mb-1 block text-sm font-medium">
-          College or university
-        </label>
-        <input id="req-school" value={school} onChange={(e) => setSchool(e.target.value)} maxLength={120} placeholder="ex: University of Texas at Austin" className={input} />
-      </div>
-      <div>
-        <label htmlFor="req-city" className="mb-1 block text-sm font-medium">
-          City
-        </label>
-        <input id="req-city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={80} className={input} />
-      </div>
-      <div>
-        <label htmlFor="req-state" className="mb-1 block text-sm font-medium">
-          State
-        </label>
-        <input id="req-state" value={state} onChange={(e) => setState(e.target.value)} maxLength={40} className={input} />
-      </div>
-      <div>
-        <label htmlFor="req-role" className="mb-1 block text-sm font-medium">
-          I&apos;m a
-        </label>
-        <select id="req-role" value={role} onChange={(e) => setRole(e.target.value)} className={input}>
-          {ROLES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="req-email" className="mb-1 block text-sm font-medium">
-          Email <span className="font-normal text-zinc-400">(optional, to hear when it opens)</span>
-        </label>
-        <input id="req-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} className={input} />
-      </div>
+    <form onSubmit={submit} noValidate className="grid gap-2 border border-rule p-3 sm:grid-cols-[140px_1fr] sm:items-center">
+      <label htmlFor="req-school">college or university</label>
+      <input id="req-school" value={school} onChange={(e) => setSchool(e.target.value)} maxLength={120} placeholder="University of Texas at Austin" />
+      <label htmlFor="req-city">city</label>
+      <input id="req-city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={80} />
+      <label htmlFor="req-state">state</label>
+      <input id="req-state" value={state} onChange={(e) => setState(e.target.value)} maxLength={40} />
+      <label htmlFor="req-role">I&apos;m a</label>
+      <select id="req-role" value={role} onChange={(e) => setRole(e.target.value)}>
+        {ROLES.map((r) => (
+          <option key={r.value} value={r.value}>
+            {r.label}
+          </option>
+        ))}
+      </select>
+      <label htmlFor="req-email">
+        email <span className="text-zinc-500">(optional)</span>
+      </label>
+      <input id="req-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} placeholder="to hear when it opens" />
       {error && (
-        <p className="text-sm text-red-600 sm:col-span-2" role="alert">
+        <p className="text-red-700 sm:col-start-2" role="alert">
           {error}
         </p>
       )}
-      <div className="sm:col-span-2">
-        <Button type="submit" className="h-12 w-full rounded-2xl" disabled={status === "sending"}>
-          {status === "sending" ? "Sending…" : "Request my campus"}
-        </Button>
+      <div className="sm:col-start-2">
+        <button type="submit" className="btn btn-primary" disabled={status === "sending"}>
+          {status === "sending" ? "sending…" : "request my campus"}
+        </button>
       </div>
     </form>
   );

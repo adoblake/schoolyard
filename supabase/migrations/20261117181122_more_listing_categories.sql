@@ -1,0 +1,9 @@
+-- Craigslist-style sections need a few more student categories.
+alter type public.listing_category add value if not exists 'clothing';
+alter type public.listing_category add value if not exists 'bikes';
+alter type public.listing_category add value if not exists 'tickets';
+alter type public.listing_category add value if not exists 'sublets';
+alter type public.listing_category add value if not exists 'roommates';
+alter type public.listing_category add value if not exists 'tutoring';
+alter type public.listing_category add value if not exists 'lost_found';
+alter type public.listing_category add value if not exists 'study_groups';

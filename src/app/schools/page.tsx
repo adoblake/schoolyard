@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CampusRequestForm } from "@/components/campus-request-form";
-import { SiteFooter } from "@/components/site-footer";
-import { Button } from "@/components/ui/button";
+import { Footer, TopBar } from "@/components/cl";
 
 export const metadata: Metadata = {
   title: "SchoolYard for colleges and universities",
@@ -56,94 +55,62 @@ const ASKS = [
 
 export default function SchoolsPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            SchoolYard
-          </Link>
-          <Button asChild size="sm" variant="outline" className="rounded-xl">
-            <Link href="/phoenix">See it live</Link>
-          </Button>
-        </div>
-      </header>
-
-      <main>
-        <section className="bg-white px-4 py-10">
-          <div className="mx-auto max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">For colleges and universities</p>
-            <h1 className="mt-2 max-w-2xl text-3xl font-bold leading-tight tracking-tight text-balance sm:text-4xl">
-              Keep good stuff on campus and out of the dumpster.
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600">
-              SchoolYard is a buy-and-sell marketplace limited to verified students, organized by campus. It gives
-              students somewhere better than a dumpster or an anonymous marketplace to pass things on.
-            </p>
-          </div>
+    <div>
+      <TopBar crumbs={[{ label: "for schools" }]} />
+      <main className="mx-auto max-w-3xl space-y-6 px-3 py-5 text-[15px] leading-relaxed">
+        <section>
+          <h1 className="text-2xl font-bold">SchoolYard for colleges and universities</h1>
+          <p className="mt-2">
+            SchoolYard is a classifieds site limited to verified students and organized by campus. It gives students
+            somewhere better than a dumpster or an anonymous marketplace to pass things on, and it&apos;s free for
+            schools. <Link href="/phoenix">See it live</Link>.
+          </p>
         </section>
 
-        <section className="px-4 py-10">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-xl font-bold tracking-tight">The problem, in numbers</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              {FACTS.map((f) => (
-                <figure key={f.figure} className="flex flex-col rounded-2xl border border-zinc-200 bg-white p-5">
-                  <div className="text-3xl font-bold tabular-nums tracking-tight">{f.figure}</div>
-                  <p className="mt-2 flex-1 text-sm leading-6 text-zinc-600">{f.text}</p>
-                  <figcaption className="mt-3 text-xs text-zinc-400">
-                    Source:{" "}
-                    <a href={f.source.href} className="underline" target="_blank" rel="noreferrer">
-                      {f.source.label}
-                    </a>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </div>
+        <section>
+          <h2 className="bar">the problem, in numbers</h2>
+          <ul className="mt-2 space-y-3">
+            {FACTS.map((f) => (
+              <li key={f.figure}>
+                <strong className="text-[18px]">{f.figure}</strong>: {f.text}{" "}
+                <a href={f.source.href} target="_blank" rel="noreferrer" className="text-[13px]">
+                  ({f.source.label})
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section className="border-y border-zinc-200 bg-white px-4 py-10">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-xl font-bold tracking-tight">What your campus gets</h2>
-            <div className="mt-5 grid gap-6 sm:grid-cols-2">
-              {BENEFITS.map((b) => (
-                <div key={b.title}>
-                  <h3 className="font-semibold">{b.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-zinc-600">{b.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        <section>
+          <h2 className="bar">what your campus gets</h2>
+          <dl className="mt-2 space-y-3">
+            {BENEFITS.map((b) => (
+              <div key={b.title}>
+                <dt className="font-bold">{b.title}</dt>
+                <dd>{b.body}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
-        <section className="px-4 py-10">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-xl font-bold tracking-tight">What we&apos;d ask of a partner campus</h2>
-            <ul className="mt-4 space-y-2 text-sm leading-6 text-zinc-700">
-              {ASKS.map((a) => (
-                <li key={a} className="flex gap-2">
-                  <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-900" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <section>
+          <h2 className="bar">what we&apos;d ask of a partner campus</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-6">
+            {ASKS.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
         </section>
 
-        <section className="px-4 pb-12">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-xl font-bold tracking-tight">Talk to us about your campus</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Leave your school and email and we&apos;ll follow up.
-            </p>
-            <div className="mt-5">
-              <CampusRequestForm defaultRole="staff" />
-            </div>
+        <section>
+          <h2 className="bar">talk to us about your campus</h2>
+          <p className="mt-2">Leave your school and email and we&apos;ll follow up.</p>
+          <div className="mt-3 max-w-xl">
+            <CampusRequestForm defaultRole="staff" />
           </div>
         </section>
       </main>
-
-      <SiteFooter />
+      <Footer />
     </div>
   );
 }

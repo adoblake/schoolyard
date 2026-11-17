@@ -22,6 +22,12 @@ export type Database = {
         Update: { blocked_id?: string; blocker_id?: string; created_at?: string };
         Relationships: Rel[];
       };
+      campus_requests: {
+        Row: { city: string | null; created_at: string; email: string | null; id: string; role: string; school_name: string; state: string | null };
+        Insert: { city?: string | null; created_at?: string; email?: string | null; id?: string; role?: string; school_name: string; state?: string | null };
+        Update: { city?: string | null; created_at?: string; email?: string | null; id?: string; role?: string; school_name?: string; state?: string | null };
+        Relationships: [];
+      };
       conversations: {
         Row: { buyer_id: string; created_at: string; id: string; listing_id: string; seller_id: string };
         Insert: { buyer_id: string; created_at?: string; id?: string; listing_id: string; seller_id: string };

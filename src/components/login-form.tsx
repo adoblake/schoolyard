@@ -37,9 +37,7 @@ export function LoginForm() {
     }
     if (!eligible) {
       setState("idle");
-      setError(
-        "SchoolYard is for students at the colleges we cover. Use your school email (for example you@asu.edu).",
-      );
+      setError("notEligible");
       return;
     }
 
@@ -98,13 +96,35 @@ export function LoginForm() {
       />
       {error && (
         <p id="login-error" role="alert" className="mt-2 text-sm text-red-600">
-          {error}
+          {error === "notEligible" ? (
+            <>
+              SchoolYard isn&apos;t open at that school yet, or that isn&apos;t a school email. Use your school email
+              (for example you@asu.edu), or{" "}
+              <Link href="/#request" className="font-medium underline">
+                request your campus
+              </Link>
+              .
+            </>
+          ) : (
+            error
+          )}
         </p>
       )}
       <Button type="submit" className="mt-4 h-12 w-full rounded-2xl" disabled={state === "checking"}>
         {state === "checking" ? "Sending…" : "Email me a sign-in link"}
       </Button>
-      <p className="mt-4 text-center text-xs text-zinc-500">
+      <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
+        By signing in you agree to the{" "}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+      <p className="mt-2 text-center text-xs text-zinc-500">
         Just looking?{" "}
         <Link href={next} className="underline">
           Keep browsing

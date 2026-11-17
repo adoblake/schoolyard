@@ -11,7 +11,8 @@ by campus and category, and buy, sell or trade with other verified students.
 | 0 | App scaffold, prototype ported, prototype bugs fixed | ✅ done |
 | 1 | Supabase: school-email sign-in, real posting with photos, real browse/search, saved listings | ✅ done |
 | 2 | In-app messaging + notifications | next |
-| 3 | Report/block/moderation tools, Terms & Privacy, deploy + domain | |
+| Launch prep | Landing page, For Schools page, request-your-campus form, draft Terms & Privacy, share image, sitemap | ✅ done |
+| 3 | Report/block/moderation tools, final legal review, custom domain | |
 
 ### What works now
 
@@ -29,6 +30,9 @@ by campus and category, and buy, sell or trade with other verified students.
 - **Saved listings** stored per account.
 - **Account page**: edit name/campus, sign out, see your listings.
 - **Reply** still says messaging isn't live (Phase 2) instead of pretending to send.
+- **Public pages**: `/` (students), `/schools` (administrators, with sourced
+  figures), `/terms` and `/privacy` (drafts), plus a request-your-campus form
+  that saves to the `campus_requests` table (read it in the Supabase table editor).
 
 ## Tech
 
@@ -42,11 +46,36 @@ by campus and category, and buy, sell or trade with other verified students.
 
 ```bash
 npm install
-cp .env.example .env.local   # public Supabase URL + publishable key
-npm run dev                  # http://localhost:3000 → /phoenix
+npm run dev                  # http://localhost:3000
 ```
 
+The app talks to the SchoolYard Supabase project by default. To point it at a
+different project, copy `.env.example` to `.env.local` and change the values.
+
+## Put it online (Vercel, about 5 minutes)
+
+1. Go to <https://vercel.com/new>, sign in with GitHub, and import `adoblake/schoolyard`.
+2. Leave every setting at its default and click **Deploy**. No environment
+   variables are needed. You'll get a URL like `https://schoolyard-xxxx.vercel.app`.
+3. In Supabase, open **Authentication → URL Configuration**: set **Site URL** to
+   that URL and add `https://<that-url>/auth/confirm` to **Redirect URLs**.
+4. When you buy a domain, add it in Vercel (**Settings → Domains**), repeat step 3
+   with it, and set `NEXT_PUBLIC_SITE_URL` to it in Vercel so share previews use it.
+
+Every push to `main` redeploys automatically.
+
 Other scripts: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`.
+
+## Launch checklist
+
+Browsing works for anyone as soon as it's deployed. Before inviting students:
+
+- [ ] Deploy (above) and set the Supabase URL configuration
+- [ ] Custom SMTP so sign-in emails reach students (below)
+- [ ] Confirm each school's student email domain (below)
+- [ ] Add a contact email to `/privacy` and have Terms & Privacy reviewed
+- [ ] Empty `tester_emails`
+- [ ] Seed a few real listings yourself so the first visitors don't see an empty board
 
 ## Before real students can sign in
 
@@ -88,6 +117,9 @@ src/
     account/page.tsx               profile, sign out, my listings
     login/page.tsx                 school-email sign-in
     auth/confirm/route.ts          where the email link lands
+    page.tsx                       public landing page
+    schools/page.tsx               pitch for colleges and universities
+    terms/, privacy/               draft legal pages
   components/                      screens and shared UI
   lib/
     data.ts                        regions + schools (must match the DB seed)

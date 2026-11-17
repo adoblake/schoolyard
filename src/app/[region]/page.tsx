@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BrowseControls } from "@/components/browse-view";
 import { ListingList, ListingListSkeleton, PostFirstLink } from "@/components/listing-list";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getRegion } from "@/lib/data";
 import { paramSource, parseFilters } from "@/lib/listings";
@@ -38,6 +39,7 @@ export default async function BrowsePage({ params, searchParams }: PageProps<"/[
           </Suspense>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

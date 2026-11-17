@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The app is light-only for now; dark mode is a later design pass. */
+:root {
+  color-scheme: light;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.3);
+}

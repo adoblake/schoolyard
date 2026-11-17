@@ -5,6 +5,8 @@ text, blue links, dense category directory), organized around the colleges
 nearby: pick a SchoolYard (`phoenix.schoolyard`, `tucson.schoolyard`, …), browse
 by section, category and campus, and buy, sell or trade with verified students.
 
+**Live:** <https://schoolyard-chi.vercel.app/> (deploys automatically from this repo's default branch)
+
 ## Status
 
 | Phase | Scope | Status |
@@ -75,7 +77,8 @@ Other scripts: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`.
 
 Browsing works for anyone as soon as it's deployed. Before inviting students:
 
-- [ ] Deploy (above) and set the Supabase URL configuration
+- [x] Deploy (live at https://schoolyard-chi.vercel.app/)
+- [ ] Set the Supabase URL configuration for that address
 - [ ] Custom SMTP so sign-in emails reach students (below)
 - [ ] Confirm each school's student email domain (below)
 - [ ] Add a contact email to `/privacy` and have Terms & Privacy reviewed

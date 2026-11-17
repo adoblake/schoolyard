@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Heart, Home, MapPin, Menu, Plus } from "lucide-react";
+import { Heart, Home, LogIn, MapPin, Menu, Plus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/sheet";
 import { RegionPicker } from "@/components/region-picker";
-import { useSaved } from "@/lib/local-store";
+import { useSaved, useUserId } from "@/lib/client-store";
 import type { Region } from "@/lib/types";
 
 export function SiteHeader({ region }: { region: Region }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const { savedIds } = useSaved();
+  const { savedCount } = useSaved();
+  const userId = useUserId();
+  const close = () => setMenuOpen(false);
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -43,24 +45,33 @@ export function SiteHeader({ region }: { region: Region }) {
         </Button>
       </div>
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="SchoolYard" side="left">
+      <Sheet open={menuOpen} onClose={close} title="SchoolYard" side="left">
         <nav className="flex flex-col gap-1 text-sm font-medium">
-          <MenuLink href={`/${region.slug}`} onNavigate={() => setMenuOpen(false)}>
+          <MenuLink href={`/${region.slug}`} onNavigate={close}>
             <Home className="h-4 w-4" aria-hidden /> Browse {region.name}
           </MenuLink>
-          <MenuLink href={`/${region.slug}/saved`} onNavigate={() => setMenuOpen(false)}>
+          <MenuLink href={`/${region.slug}/saved`} onNavigate={close}>
             <Heart className="h-4 w-4" aria-hidden /> Saved listings
-            {savedIds.length > 0 && (
-              <span className="ml-auto rounded-full bg-zinc-900 px-2 text-xs text-white">{savedIds.length}</span>
+            {savedCount > 0 && (
+              <span className="ml-auto rounded-full bg-zinc-900 px-2 text-xs text-white">{savedCount}</span>
             )}
           </MenuLink>
-          <MenuLink href={`/${region.slug}/post`} onNavigate={() => setMenuOpen(false)}>
+          <MenuLink href={`/${region.slug}/post`} onNavigate={close}>
             <Plus className="h-4 w-4" aria-hidden /> Post a listing
           </MenuLink>
+          {userId ? (
+            <MenuLink href={`/account?region=${region.slug}`} onNavigate={close}>
+              <UserRound className="h-4 w-4" aria-hidden /> Account &amp; my listings
+            </MenuLink>
+          ) : (
+            <MenuLink href={`/login?next=/${region.slug}`} onNavigate={close}>
+              <LogIn className="h-4 w-4" aria-hidden /> Sign in with school email
+            </MenuLink>
+          )}
           <button
             type="button"
             onClick={() => {
-              setMenuOpen(false);
+              close();
               setPickerOpen(true);
             }}
             className="flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-zinc-100"
@@ -69,7 +80,7 @@ export function SiteHeader({ region }: { region: Region }) {
           </button>
         </nav>
         <p className="mt-6 text-xs leading-5 text-zinc-500">
-          Sign-in with your school email, messaging and seller profiles are on the way.
+          Meet in busy public spots on campus, and don&apos;t pay before you&apos;ve seen the item.
         </p>
       </Sheet>
 
@@ -88,11 +99,7 @@ function MenuLink({
   children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      onNavigate={onNavigate}
-      className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-zinc-100"
-    >
+    <Link href={href} onNavigate={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-zinc-100">
       {children}
     </Link>
   );

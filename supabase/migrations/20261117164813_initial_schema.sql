@@ -1,5 +1,4 @@
--- SchoolYard initial schema (DRAFT — written in Phase 0, not yet applied to any project).
--- Review before running in Phase 1. Targets Supabase Postgres (auth schema, anon /
+-- SchoolYard initial schema. Targets Supabase Postgres (auth schema, anon /
 -- authenticated roles). Row-level security is on for every table.
 
 -- ---------------------------------------------------------------------------
@@ -59,8 +58,42 @@ as $$
   limit 1;
 $$;
 
--- Create a profile whenever someone signs up. Phase 1 should ALSO block
--- non-school emails at sign-up with a Supabase Auth "before user created" hook.
+-- Individual addresses allowed to sign up without a school email, treated as
+-- verified for the given school domain. For testing before launch: manage it
+-- from the dashboard / SQL editor only (no API access), and empty it before launch.
+create table public.tester_emails (
+  email   text primary key check (email = lower(email)),
+  domain  text not null,
+  note    text
+);
+
+-- Resolves the school domain an email signs up under (school domain or tester entry).
+create function public.signup_domain(email text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    public.matching_school_domain($1),
+    (select t.domain from public.tester_emails t where t.email = lower($1))
+  );
+$$;
+
+-- Lets the sign-in form tell people up front whether their email can join.
+create function public.email_is_eligible(email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.signup_domain($1) is not null;
+$$;
+
+-- Create a profile whenever someone signs up, and refuse sign-ups from
+-- addresses that aren't a school email (or on the tester list).
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -68,9 +101,14 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_domain text := public.matching_school_domain(new.email);
+  v_domain text := public.signup_domain(new.email);
   v_school text;
 begin
+  if v_domain is null then
+    raise exception 'SchoolYard sign-up needs a school email address (got %)', split_part(new.email, '@', 2)
+      using errcode = 'check_violation';
+  end if;
+
   -- Pre-select the campus when the domain maps to exactly one school.
   select min(school_id) into v_school
   from public.school_email_domains
@@ -126,6 +164,7 @@ as $$
     where id = (select auth.uid())
       and verified_domain is not null
       and school_id is not null
+      and display_name <> ''
   );
 $$;
 
@@ -262,7 +301,8 @@ create table public.reports (
 );
 create index reports_status_idx on public.reports (status, created_at);
 
--- Either user has blocked the other.
+-- Either user has blocked the other. Only answers for the caller's own
+-- relationships, so it can't be used to probe who blocked whom.
 create function public.is_blocked_between(a uuid, b uuid)
 returns boolean
 language sql
@@ -270,7 +310,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select exists (
+  select coalesce((select auth.uid()) in (a, b), false) and exists (
     select 1 from public.blocks
     where (blocker_id = a and blocked_id = b) or (blocker_id = b and blocked_id = a)
   );
@@ -298,6 +338,7 @@ $$;
 alter table public.regions               enable row level security;
 alter table public.schools               enable row level security;
 alter table public.school_email_domains  enable row level security;
+alter table public.tester_emails         enable row level security;  -- no policies: not reachable via the API
 alter table public.profiles              enable row level security;
 alter table public.listings              enable row level security;
 alter table public.listing_photos        enable row level security;
@@ -402,3 +443,5 @@ create policy "users see own reports" on public.reports
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
 revoke execute on function public.guard_profile_update() from public, anon, authenticated;
 revoke execute on function public.check_listing_school_region() from public, anon, authenticated;
+revoke execute on function public.signup_domain(text) from public, anon, authenticated;
+grant execute on function public.email_is_eligible(text) to anon, authenticated;

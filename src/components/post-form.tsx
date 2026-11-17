@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListingCard } from "@/components/listing-card";
 import { getRegion } from "@/lib/data";
+import { deleteListing } from "@/lib/listing-actions";
 import { parsePriceToCents } from "@/lib/listings";
-import { addLocalListing } from "@/lib/local-store";
+import { resizeImage } from "@/lib/resize-image";
+import { createClient } from "@/lib/supabase/client";
+import { PHOTO_BUCKET } from "@/lib/supabase/env";
 import { CATEGORIES, CONDITIONS, type Category, type Condition, type Listing } from "@/lib/types";
 
 type Draft = {
@@ -18,12 +21,11 @@ type Draft = {
   schoolId: string;
   area: string;
   description: string;
-  sellerName: string;
 };
 
-type Errors = Partial<Record<keyof Draft, string>>;
+type Errors = Partial<Record<keyof Draft | "photos", string>>;
 
-export const LIMITS = { title: 80, description: 2000, area: 60, sellerName: 40 };
+export const LIMITS = { title: 80, description: 2000, area: 60, photos: 6, photoBytes: 15 * 1024 * 1024 };
 
 export function validateDraft(d: Draft): Errors {
   const errors: Errors = {};
@@ -35,35 +37,88 @@ export function validateDraft(d: Draft): Errors {
   }
   if (!d.area.trim()) errors.area = "Where can people pick it up?";
   if (d.description.trim().length < 10) errors.description = "Add a few details (at least 10 characters).";
-  if (!d.sellerName.trim()) errors.sellerName = "Add the name buyers will see.";
   return errors;
 }
 
-export function PostForm({ regionSlug }: { regionSlug: string }) {
+type Photo = { file: File; url: string };
+
+export function PostForm({
+  regionSlug,
+  userId,
+  sellerName,
+  sellerDomain,
+  defaultSchoolId,
+}: {
+  regionSlug: string;
+  userId: string;
+  sellerName: string;
+  sellerDomain: string | null;
+  defaultSchoolId: string | null;
+}) {
   const region = getRegion(regionSlug)!;
   const router = useRouter();
-  const emptyDraft = (): Draft => ({
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState<Draft>({
     category: "books",
     title: "",
     price: "",
     condition: "good",
-    schoolId: region.schools[0].id,
+    schoolId:
+      defaultSchoolId && region.schools.some((s) => s.id === defaultSchoolId) ? defaultSchoolId : region.schools[0].id,
     area: "",
     description: "",
-    sellerName: "",
   });
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [errors, setErrors] = useState<Errors>({});
   const [preview, setPreview] = useState<Listing | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Free preview object URLs when photos are removed or the page goes away.
+  const photosRef = useRef(photos);
+  useEffect(() => {
+    photosRef.current = photos;
+  });
+  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
-  function buildListing(): Listing {
+  function addPhotos(files: FileList | null) {
+    if (!files) return;
+    const accepted: Photo[] = [];
+    let error: string | undefined;
+    for (const file of Array.from(files)) {
+      if (photos.length + accepted.length >= LIMITS.photos) {
+        error = `Up to ${LIMITS.photos} photos.`;
+        break;
+      }
+      if (!file.type.startsWith("image/")) {
+        error = "Only photos can be added.";
+        continue;
+      }
+      if (file.size > LIMITS.photoBytes) {
+        error = "That photo is over 15 MB.";
+        continue;
+      }
+      accepted.push({ file, url: URL.createObjectURL(file) });
+    }
+    setPhotos((p) => [...p, ...accepted]);
+    setErrors((e) => ({ ...e, photos: error }));
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((p) => {
+      URL.revokeObjectURL(p[index].url);
+      return p.filter((_, i) => i !== index);
+    });
+  }
+
+  function buildPreview(): Listing {
     return {
-      id: `local-${crypto.randomUUID()}`,
+      id: "preview",
       regionSlug: region.slug,
       schoolId: draft.schoolId,
       title: draft.title.trim(),
@@ -72,11 +127,68 @@ export function PostForm({ regionSlug }: { regionSlug: string }) {
       condition: draft.condition,
       area: draft.area.trim(),
       description: draft.description.trim(),
-      sellerName: draft.sellerName.trim(),
-      sellerDomain: "",
+      sellerId: userId,
+      sellerName,
+      sellerDomain,
       postedAt: new Date().toISOString(),
-      origin: "local",
+      status: "active",
+      photos: photos.map((p) => p.url),
     };
+  }
+
+  async function publish(listing: Listing) {
+    const supabase = createClient();
+    setSubmitError(null);
+    setStatus("Posting…");
+
+    const { data, error } = await supabase
+      .from("listings")
+      .insert({
+        seller_id: userId,
+        region_slug: listing.regionSlug,
+        school_id: listing.schoolId,
+        title: listing.title,
+        description: listing.description,
+        price_cents: listing.priceCents,
+        category: listing.category,
+        condition: listing.condition,
+        area: listing.area,
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      setStatus(null);
+      setSubmitError(
+        error?.code === "42501"
+          ? "Your account isn't set up to post yet. Add your name and campus on the Account page."
+          : `Couldn't post: ${error?.message ?? "unknown error"}`,
+      );
+      return;
+    }
+
+    const listingId = data.id;
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        setStatus(`Uploading photo ${i + 1} of ${photos.length}…`);
+        const blob = await resizeImage(photos[i].file);
+        const path = `${userId}/${listingId}/${i}.jpg`;
+        const upload = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+        if (upload.error) throw new Error(upload.error.message);
+        const row = await supabase.from("listing_photos").insert({ listing_id: listingId, storage_path: path, position: i });
+        if (row.error) throw new Error(row.error.message);
+      }
+    } catch (e) {
+      // Don't leave a half-posted listing behind.
+      await deleteListing(listingId).catch(() => {});
+      setStatus(null);
+      setSubmitError(`Photo upload failed, so nothing was posted. ${e instanceof Error ? e.message : ""}`);
+      return;
+    }
+
+    setStatus("Posted!");
+    router.replace(`/${region.slug}/listing/${listingId}`);
+    router.refresh();
   }
 
   if (preview) {
@@ -84,26 +196,21 @@ export function PostForm({ regionSlug }: { regionSlug: string }) {
       <Shell title="preview" onBack={() => setPreview(null)} backLabel="edit">
         <p className="mb-3 text-sm text-zinc-500">This is how your post will look in {region.name}.</p>
         <div className="pointer-events-none">
-          <ListingCard listing={preview} />
+          <ListingCard listing={preview} hideActions />
         </div>
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-700">
           <p className="whitespace-pre-line">{preview.description}</p>
         </div>
-        <Button
-          className="mt-4 h-12 w-full rounded-2xl"
-          onClick={() => {
-            const listing = { ...preview, postedAt: new Date().toISOString() };
-            addLocalListing(listing);
-            // Next keeps this page mounted after navigating away; start fresh next time.
-            setPreview(null);
-            setDraft(emptyDraft());
-            router.replace(`/${region.slug}/listing/${listing.id}`);
-          }}
-        >
-          post it
+        {submitError && (
+          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+            {submitError}
+          </p>
+        )}
+        <Button className="mt-4 h-12 w-full rounded-2xl" disabled={!!status} onClick={() => publish(preview)}>
+          {status ?? "post it"}
         </Button>
         <p className="mt-2 text-center text-xs text-zinc-500">
-          Demo build: your post is saved in this browser only.
+          Listings stay up for 30 days, or until you mark them sold.
         </p>
       </Shell>
     );
@@ -113,12 +220,16 @@ export function PostForm({ regionSlug }: { regionSlug: string }) {
   const isWanted = draft.category === "wanted";
 
   return (
-    <Shell title="new post" onBack={() => (window.history.length > 1 ? router.back() : router.push(`/${region.slug}`))}
-      backLabel="cancel">
+    <Shell
+      title="new post"
+      onBack={() => (window.history.length > 1 ? router.back() : router.push(`/${region.slug}`))}
+      backLabel="cancel"
+    >
       <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4">
         <div className="mb-1 font-bold">Simple posting</div>
         <p className="text-sm leading-6 text-zinc-500">
-          Pick a category, add the basics, and post to students near your campus.
+          Pick a category, add the basics, and post to students near your campus. Posting as{" "}
+          <span className="font-medium text-zinc-900">{sellerName}</span>.
         </p>
       </div>
 
@@ -129,11 +240,10 @@ export function PostForm({ regionSlug }: { regionSlug: string }) {
           const found = validateDraft(draft);
           setErrors(found);
           if (Object.keys(found).length === 0) {
-            setPreview(buildListing());
+            setPreview(buildPreview());
             window.scrollTo(0, 0);
           } else {
-            const first = Object.keys(found)[0];
-            document.getElementById(`post-${first}`)?.focus();
+            document.getElementById(`post-${Object.keys(found)[0]}`)?.focus();
           }
         }}
         className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4"
@@ -234,22 +344,55 @@ export function PostForm({ regionSlug }: { regionSlug: string }) {
           />
         </Field>
 
-        <Field label="your name (as buyers will see it)" id="post-sellerName" error={errors.sellerName}>
+        <div>
+          <span className="mb-1 block text-sm font-medium">
+            photos <span className="font-normal text-zinc-400">(optional, up to {LIMITS.photos})</span>
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {photos.map((p, i) => (
+              <div key={p.url} className="relative h-20 w-20 overflow-hidden rounded-xl border border-zinc-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  aria-label={`Remove photo ${i + 1}`}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {photos.length < LIMITS.photos && (
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-50"
+              >
+                <ImagePlus className="h-5 w-5" aria-hidden /> add
+              </button>
+            )}
+          </div>
           <input
-            id="post-sellerName"
-            value={draft.sellerName}
-            maxLength={LIMITS.sellerName}
-            onChange={(e) => set("sellerName", e.target.value)}
-            placeholder="ex: Maya R."
-            autoComplete="given-name"
-            className={inputClass}
-            aria-invalid={!!errors.sellerName}
+            ref={fileInput}
+            id="post-photos"
+            type="file"
+            accept="image/*"
+            multiple
+            className="sr-only"
+            aria-label="Add photos"
+            onChange={(e) => {
+              addPhotos(e.target.files);
+              e.target.value = "";
+            }}
           />
-        </Field>
-
-        <p className="text-xs leading-5 text-zinc-500">
-          Photos and school-email verification arrive with accounts in Phase 1.
-        </p>
+          {errors.photos && (
+            <p className="mt-1 text-xs text-red-600" role="alert">
+              {errors.photos}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-zinc-500">Photos are resized and location data is removed before upload.</p>
+        </div>
 
         <Button type="submit" className="h-12 w-full rounded-2xl">
           preview post
@@ -288,7 +431,7 @@ function Field({
   );
 }
 
-function Shell({
+export function Shell({
   title,
   onBack,
   backLabel,

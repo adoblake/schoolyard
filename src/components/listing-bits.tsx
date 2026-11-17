@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatTimeAgo } from "@/lib/listings";
-import { useNow } from "@/lib/local-store";
+import { useNow } from "@/lib/client-store";
 import type { Category, Listing } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +29,22 @@ const CATEGORY_ICONS: Record<Category, LucideIcon> = {
 };
 
 /** Listing photo, or a category icon tile when the listing has no photo. */
-export function ListingImage({ listing, className }: { listing: Listing; className?: string }) {
-  if (listing.imageUrl) {
+export function ListingImage({
+  listing,
+  className,
+  src = listing.photos[0],
+}: {
+  listing: Pick<Listing, "title" | "category" | "photos">;
+  className?: string;
+  src?: string;
+}) {
+  if (src) {
     return (
-      // Plain <img> for now: photos come from arbitrary hosts until uploads
-      // move to Supabase Storage in Phase 1, then this can become next/image.
+      // Plain <img>: uploads are already resized in the browser before upload,
+      // so there's little to gain from Next's image optimizer for now.
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={listing.imageUrl}
+        src={src}
         alt={listing.title}
         loading="lazy"
         className={cn("bg-zinc-100 object-cover", className)}
@@ -64,7 +72,7 @@ export function TimeAgo({ iso }: { iso: string }) {
   );
 }
 
-export function VerifiedBadge({ domain, className }: { domain: string; className?: string }) {
+export function VerifiedBadge({ domain, className }: { domain: string | null; className?: string }) {
   if (!domain) {
     return (
       <span
@@ -83,17 +91,9 @@ export function VerifiedBadge({ domain, className }: { domain: string; className
         "inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600",
         className,
       )}
-      title="School email verification arrives in Phase 1"
+      title={`Verified ${domain} email`}
     >
       <ShieldCheck className="h-3 w-3" aria-hidden /> {domain}
     </span>
-  );
-}
-
-export function DemoBanner() {
-  return (
-    <p className="bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
-      Demo build: listings are samples, and anything you post or save stays in this browser only.
-    </p>
   );
 }

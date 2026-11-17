@@ -31,6 +31,8 @@ export type Region = {
   schools: School[];
 };
 
+export type ListingStatus = "active" | "sold" | "expired" | "removed";
+
 export type Listing = {
   id: string;
   regionSlug: string;
@@ -43,14 +45,15 @@ export type Listing = {
   /** Pickup spot, e.g. "near Noble Library". */
   area: string;
   description: string;
+  sellerId: string;
   sellerName: string;
-  /** Email domain the seller verified with, e.g. "asu.edu". Not checked until Phase 1. */
-  sellerDomain: string;
+  /** School email domain the seller verified, e.g. "asu.edu". */
+  sellerDomain: string | null;
   /** ISO timestamp. */
   postedAt: string;
-  imageUrl?: string;
-  /** "seed" = built-in demo data, "local" = posted from this browser (Phase 0 only). */
-  origin: "seed" | "local";
+  status: ListingStatus;
+  /** Public photo URLs, in display order. */
+  photos: string[];
 };
 
 export type SortOrder = "newest" | "price-asc" | "price-desc";

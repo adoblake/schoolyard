@@ -1,5 +1,5 @@
--- Reference data for local development and the first deploy.
--- Mirrors src/lib/data.ts (REGIONS).
+-- Reference data: regions, schools, school email domains (mirrors src/lib/data.ts).
+-- VERIFY BEFORE LAUNCH: confirm each school's *student* email domain with the school.
 
 insert into public.regions (slug, label, name, subtitle, sort_order) values
   ('phoenix',   'phoenix.schoolyard',   'Phoenix SchoolYard',   'Phoenix metro student classifieds',   1),
@@ -17,8 +17,6 @@ insert into public.schools (id, region_slug, name, sort_order) values
   ('nau',           'flagstaff', 'NAU',                   1),
   ('coconino-cc',   'flagstaff', 'Coconino CC',           2);
 
--- VERIFY BEFORE LAUNCH: confirm each school's *student* email domain with the
--- school. Subdomains match automatically (my.gcu.edu → gcu.edu).
 insert into public.school_email_domains (domain, school_id) values
   ('asu.edu',      'asu-tempe'),
   ('asu.edu',      'asu-downtown'),

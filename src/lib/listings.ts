@@ -1,53 +1,59 @@
-import { getSchoolName } from "./data";
-import type { Listing, ListingFilters } from "./types";
+import { CATEGORIES, type Category, type ListingFilters, type Region, type SortOrder } from "./types";
 
-export const DEFAULT_FILTERS: Omit<ListingFilters, "regionSlug"> = {
-  schoolId: "all",
-  category: "all",
-  query: "",
-  sort: "newest",
-};
+export const SORTS: SortOrder[] = ["newest", "price-asc", "price-desc"];
+
+type ParamSource = { get(name: string): string | null };
+
+/** Wraps Next's searchParams object (or URLSearchParams) in a common shape. */
+export function paramSource(
+  params: URLSearchParams | Record<string, string | string[] | undefined>,
+): ParamSource {
+  if (params instanceof URLSearchParams) return params;
+  return {
+    get(name) {
+      const v = params[name];
+      return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+    },
+  };
+}
+
+function parseDollarsToCents(value: string | null): number | undefined {
+  if (value === null || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : undefined;
+}
 
 /**
- * Filters and sorts listings for the browse screen.
- * Region is always applied first — the prototype skipped this, so picking
- * Tucson still showed Phoenix listings.
+ * Reads browse filters from the URL (?school=gcu&cat=books&q=lamp&min=5&max=40&sort=price-asc).
+ * Unknown or out-of-region values fall back to "all" rather than erroring.
  */
-export function filterListings(listings: Listing[], filters: ListingFilters): Listing[] {
-  const terms = filters.query.toLowerCase().split(/\s+/).filter(Boolean);
+export function parseFilters(region: Region, params: ParamSource): ListingFilters {
+  const school = params.get("school");
+  const cat = params.get("cat");
+  const sort = params.get("sort");
+  return {
+    regionSlug: region.slug,
+    schoolId: school && region.schools.some((s) => s.id === school) ? school : "all",
+    category: cat && (CATEGORIES as readonly string[]).includes(cat) ? (cat as Category) : "all",
+    query: (params.get("q") ?? "").slice(0, 100),
+    minPriceCents: parseDollarsToCents(params.get("min")),
+    maxPriceCents: parseDollarsToCents(params.get("max")),
+    sort: sort && (SORTS as string[]).includes(sort) ? (sort as SortOrder) : "newest",
+  };
+}
 
-  const result = listings.filter((item) => {
-    if (item.regionSlug !== filters.regionSlug) return false;
-    if (filters.schoolId !== "all" && item.schoolId !== filters.schoolId) return false;
-    if (filters.category !== "all" && item.category !== filters.category) return false;
-    if (filters.minPriceCents !== undefined && item.priceCents < filters.minPriceCents) return false;
-    if (filters.maxPriceCents !== undefined && item.priceCents > filters.maxPriceCents) return false;
-
-    if (terms.length > 0) {
-      const haystack = [
-        item.title,
-        item.description,
-        item.area,
-        item.category,
-        getSchoolName(item.schoolId),
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!terms.every((t) => haystack.includes(t))) return false;
-    }
-    return true;
-  });
-
-  return result.sort((a, b) => {
-    switch (filters.sort) {
-      case "price-asc":
-        return a.priceCents - b.priceCents;
-      case "price-desc":
-        return b.priceCents - a.priceCents;
-      default:
-        return Date.parse(b.postedAt) - Date.parse(a.postedAt);
-    }
-  });
+/**
+ * Turns free text into a Postgres to_tsquery string with prefix matching, so
+ * "calc text" finds "calculator textbook". Strips everything but letters and
+ * digits, so user input can't inject tsquery operators. Returns null if empty.
+ */
+export function toPrefixTsQuery(query: string): string | null {
+  const terms = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .slice(0, 8);
+  return terms.length ? terms.map((t) => `${t}:*`).join(" & ") : null;
 }
 
 export function formatPrice(cents: number): string {
@@ -80,4 +86,10 @@ export function formatTimeAgo(iso: string, now: number): string {
   if (days === 1) return "yesterday";
   if (days < 30) return `${days} days ago`;
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Only allow same-site relative paths as post-login redirect targets. */
+export function safeNextPath(next: string | null | undefined, fallback = "/"): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
+  return next;
 }

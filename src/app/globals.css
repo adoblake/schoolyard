@@ -2,8 +2,9 @@
 
 /*
  * Classifieds look: plain system font, white page, classic blue links with
- * purple visited links, light gray bars for section headers. The only brand
- * color is SchoolYard's school-bus yellow in the wordmark.
+ * purple visited links, light gray bars for section headers. Brand color is
+ * used sparingly: ivy green for the wordmark and book mark, school-bus yellow
+ * for the bookmark ribbon. See /brand and src/lib/brand.ts.
  */
 @theme inline {
   --font-sans: Arial, Helvetica, "Liberation Sans", sans-serif;
@@ -11,7 +12,8 @@
   --color-visited: #551a8b;
   --color-bar: #eeeeee;
   --color-rule: #cccccc;
-  --color-brand: #f5b700;
+  --color-brand: #1e6b3a;
+  --color-accent: #f5b700;
 }
 
 :root {

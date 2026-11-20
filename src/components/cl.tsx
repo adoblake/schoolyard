@@ -1,16 +1,18 @@
 import Link from "next/link";
+import { BookMark } from "@/components/logo";
 
-/** SchoolYard wordmark: yellow square + name. */
+/** SchoolYard wordmark: open-book mark + lowercase name in ivy green. */
 export function Wordmark({ href = "/", size = "md" }: { href?: string; size?: "md" | "lg" }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-1.5 font-bold tracking-tight text-[#222] hover:no-underline ${
-        size === "lg" ? "text-3xl" : "text-lg"
+      aria-label="SchoolYard home"
+      className={`inline-flex items-center font-bold tracking-tight text-brand visited:text-brand hover:no-underline ${
+        size === "lg" ? "gap-1.5 text-[26px] leading-none" : "gap-1 text-lg"
       }`}
     >
-      <span aria-hidden className={`inline-block rounded-[3px] bg-brand ${size === "lg" ? "h-5 w-5" : "h-3 w-3"}`} />
-      SchoolYard
+      <BookMark className={size === "lg" ? "h-8 w-8" : "h-[22px] w-[22px]"} />
+      schoolyard
     </Link>
   );
 }
@@ -57,6 +59,7 @@ export function Footer() {
         <Link href="/privacy">privacy</Link>
         <Link href="/schools">for schools</Link>
         <Link href="/about#request">request a campus</Link>
+        <Link href="/brand">logos</Link>
       </nav>
       <p className="mt-2">
         SchoolYard is an independent student marketplace and isn&apos;t affiliated with or endorsed by any college or

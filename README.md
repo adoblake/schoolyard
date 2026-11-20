@@ -41,6 +41,10 @@ by section, category and campus, and buy, sell or trade with verified students.
 - **About, safety tips, For Schools, request-your-campus form, draft Terms and Privacy.**
 - **Reply** still says messaging isn't live yet instead of pretending to send.
 
+## Brand
+
+An open book with a school-bus-yellow bookmark, in ivy green (`#1e6b3a`), next to a lowercase "schoolyard". Everything else stays plain classifieds black, gray and link blue. Logos, colors and writing style are on the site at `/brand`, with downloads in `public/brand/`. The artwork's paths live in `src/lib/brand.ts`, shared by the on-page logo, the favicon and app icons, and the share image.
+
 ## Tech
 
 - [Next.js 16](https://nextjs.org) (App Router, Cache Components), React 19, TypeScript
